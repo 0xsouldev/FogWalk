@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fogwalk</title>
+<meta name="description" content="A fog-of-war map that clears wherever you walk.">
+<meta name="theme-color" content="#0c101b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fogwalk">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div id="map" aria-label="Map of your walks"></div>
+
+<header class="hud top" id="top">
+  <div class="stats glass" aria-label="Totals">
+    <div class="stat main"><span class="lbl">Uncovered</span><span class="num"><b id="stArea">0</b><small id="stAreaU">m²</small></span></div>
+    <div class="stat"><span class="lbl">Island</span><span class="num"><b id="stIsle">0.00</b><small>%</small></span></div>
+    <div class="stat"><span class="lbl">Walked</span><span class="num"><b id="stDist">0.0</b><small>km</small></span></div>
+  </div>
+  <button class="iconbtn glass" id="btnMenu" aria-label="Walks, stats and your sprite" aria-expanded="false" aria-controls="sheet">
+    <svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+  </button>
+  <div class="row2">
+    <div class="seg glass" role="group" aria-label="Map view">
+      <button data-mode="fog" aria-pressed="true">Fog</button>
+      <button data-mode="lines" aria-pressed="false">Lines</button>
+      <button data-mode="heat" aria-pressed="false">Heat</button>
+    </div>
+    <div class="row2r">
+      <span class="chip glass" id="streakChip" hidden title="Day streak"><svg class="i" viewBox="0 0 24 24"><path d="M12 3c.8 3.6 5 5.2 5 10a5 5 0 0 1-10 0c0-2.6 1.6-3.8 2-5.8 1 .9 1.8 2.2 1.9 3.8 1-1.9 1.4-4.9 1.1-8z"/></svg><span id="streakN">0</span></span>
+      <button class="iconbtn glass locate" id="btnLocate" aria-label="Show my location">
+        <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<footer class="hud bottom" id="bottom">
+  <div class="intro glass" id="intro" hidden>
+    <div class="av" id="introAv"></div>
+    <button class="x" id="introClose" aria-label="Dismiss"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h1>All fog for now</h1>
+    <p>Start a walk and the map clears around you. Treasure is hidden in the fog, so keep an eye out.</p>
+  </div>
+
+  <div class="idlebar" id="idleBar">
+    <button class="iconbtn glass bigicon" id="btnPin" aria-label="Drop a pin">
+      <svg class="i" viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.2"/></svg>
+    </button>
+    <button class="primary" id="btnStart">
+      <svg class="i" viewBox="0 0 24 24"><path d="M8.5 4.5c1.6 0 2.4 1.6 2.2 3.7-.2 2-1.2 3.3-2.6 3.3S6 10.2 6.1 8.3c.1-2 1-3.8 2.4-3.8zM7 14.5l3.4.6-.4 2.6c-.2 1.2-1.1 1.8-2 1.6-1-.2-1.5-1.1-1.3-2.2zM15.5 8.5c1.4 0 2.3 1.8 2.4 3.8.1 1.9-.9 3.2-2.3 3.2s-2.4-1.3-2.6-3.3c-.2-2.1.6-3.7 2.5-3.7zM14 18.5l3.4-.6.3 1.6c.2 1.1-.3 2-1.3 2.2-.9.2-1.8-.4-2-1.6z" fill="currentColor" stroke="none"/></svg>
+      Start walk
+    </button>
+    <button class="iconbtn glass bigicon" id="btnShare" aria-label="Share your map">
+      <svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M6 12H5v8h14v-8h-1"/></svg>
+    </button>
+  </div>
+
+  <div class="placebar glass" id="placeBar" hidden>
+    <p>Move the map to place your pin</p>
+    <button class="ghost" id="btnPlaceCancel">Cancel</button>
+    <button class="primary" id="btnPlaceOk">Place here</button>
+  </div>
+
+  <div class="live glass" id="liveCard" hidden>
+    <div class="livehead">
+      <div class="livetime"><span class="rec" aria-hidden="true"></span><span id="lvTime">0:00</span></div>
+      <div class="liveright">
+        <span class="near" id="lvNear" hidden></span>
+        <span class="gps" id="lvGps">Finding GPS…</span>
+      </div>
+    </div>
+    <div class="livestats">
+      <div class="stat"><span class="lbl">Distance</span><span class="num"><b id="lvDist">0.00</b><small>km</small></span></div>
+      <div class="stat"><span class="lbl">Pace</span><span class="num"><b id="lvPace">–</b><small>/km</small></span></div>
+      <div class="stat"><span class="lbl">New ground</span><span class="num"><b id="lvNew">0</b><small id="lvNewU">m²</small></span></div>
+    </div>
+    <div class="liveactions">
+      <button class="ghost" id="btnDiscard">Discard</button>
+      <button class="ghost sq" id="btnLivePin" aria-label="Drop a pin here"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.2"/></svg></button>
+      <button class="primary" id="btnFinish">Finish walk</button>
+    </div>
+    <p class="livenote">Keep Fogwalk open with the screen on. iPhone pauses GPS for web pages when the screen locks or you switch apps.</p>
+  </div>
+
+  <div class="summary glass" id="summary" hidden aria-live="polite">
+    <div class="sumhead">
+      <div><span class="lbl" id="sumKicker">Walk saved</span><h2 id="sumTitle">Walk</h2></div>
+      <button class="closebtn" id="sumClose" aria-label="Close summary"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="sumdist" aria-label="Distance"><b id="sumDist">0.00</b><small>km</small></div>
+    <div class="livestats">
+      <div class="stat"><span class="lbl">Time</span><span class="num"><b id="sumTime">–</b></span></div>
+      <div class="stat"><span class="lbl">Pace</span><span class="num"><b id="sumPace">–</b><small>/km</small></span></div>
+      <div class="stat"><span class="lbl" id="sumAreaLbl">New ground</span><span class="num"><b id="sumArea">0</b><small id="sumAreaU">m²</small></span></div>
+    </div>
+    <p class="sumfinds" id="sumFinds" hidden></p>
+    <div class="sumactions">
+      <button class="ghost" id="sumShare"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M6 12H5v8h14v-8h-1"/></svg>Share</button>
+      <button class="primary" id="sumDone">Done</button>
+    </div>
+  </div>
+</footer>
+
+<div class="crosshair" id="crosshair" hidden><svg width="40" height="50" viewBox="0 0 40 50" aria-hidden="true"><path d="M20 48S4 31 4 18a16 16 0 0 1 32 0c0 13-16 30-16 30z" fill="#eef1f8" stroke="#0c101b" stroke-width="2"/><circle cx="20" cy="18" r="6" fill="#ffb547"/></svg></div>
+<button class="recenter glass" id="btnRecenter" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 3l7 18-7-4-7 4z"/></svg>Follow me</button>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-labelledby="sheetTitle">
+  <div class="sheethead">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#0c101b"/><path d="M12 50c6-10 16-8 20-18s14-12 20-18" stroke="#3a4560" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M12 50c6-10 16-8 20-18s14-12 20-18" stroke="#ffb547" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="52" cy="14" r="5.5" fill="#fff"/></svg>
+      <h2 id="sheetTitle">Fogwalk</h2>
+    </div>
+    <button class="closebtn" id="btnClose" aria-label="Close"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="walks" aria-selected="true" aria-controls="tab-walks">Walks</button>
+    <button role="tab" data-tab="stats" aria-selected="false" aria-controls="tab-stats">Stats</button>
+    <button role="tab" data-tab="badges" aria-selected="false" aria-controls="tab-badges">Badges</button>
+    <button role="tab" data-tab="you" aria-selected="false" aria-controls="tab-you">You</button>
+    <button role="tab" data-tab="settings" aria-selected="false" aria-controls="tab-settings">Settings</button>
+  </div>
+  <div class="sheetbody" id="sheetBody">
+    <div class="panel" id="tab-walks" role="tabpanel">
+      <section>
+        <div class="actions">
+          <button id="btnImport"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></svg>Import</button>
+          <button id="btnBackup"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 19h14"/></svg>Back up</button>
+        </div>
+        <p class="hint">Import GPX, KML, TCX, GeoJSON or a ZIP of them. Restore a Fogwalk backup the same way.</p>
+      </section>
+      <section class="tip" id="homeTip" hidden>
+        <b>Add Fogwalk to your Home Screen.</b> In Safari, tap Share, then Add to Home Screen. Safari can clear a website's saved data after 7 days without a visit, and Home Screen apps are kept. Back up now and then too.
+      </section>
+      <section>
+        <h3><span>Walks</span><span id="walkTotal"></span></h3>
+        <ul class="list" id="walkList"></ul>
+        <p class="hint" id="noWalks">No walks yet. Your first one shows up here.</p>
+      </section>
+      <section>
+        <h3><span>Pins</span><span id="pinTotal"></span></h3>
+        <ul class="list" id="pinList"></ul>
+        <p class="hint" id="noPins">Drop a pin at cool spots with the pin button. Add a note or a photo.</p>
+      </section>
+    </div>
+    <div class="panel" id="tab-stats" role="tabpanel" hidden></div>
+    <div class="panel" id="tab-badges" role="tabpanel" hidden></div>
+    <div class="panel" id="tab-you" role="tabpanel" hidden></div>
+    <div class="panel" id="tab-settings" role="tabpanel" hidden>
+      <section>
+        <h3>Reveal width</h3>
+        <div class="seg wide" id="radiusSeg" role="group" aria-label="Reveal width">
+          <button data-r="15" aria-pressed="false">Narrow</button>
+          <button data-r="25" aria-pressed="true">Normal</button>
+          <button data-r="50" aria-pressed="false">Wide</button>
+        </div>
+        <p class="hint" id="radiusHint"></p>
+      </section>
+      <section>
+        <h3>Map tiles</h3>
+        <div class="seg wide" id="styleSeg" role="group" aria-label="Map tiles">
+          <button data-style="osm" aria-pressed="true">OpenStreetMap</button>
+          <button data-style="carto" aria-pressed="false">CARTO Voyager</button>
+        </div>
+        <div class="field" id="cartoField" hidden>
+          <label for="cartoKey">CARTO API key</label>
+          <input id="cartoKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your key">
+          <p class="hint">Free for personal use. Get one at carto.com/basemaps/apikey. Without a key, OpenStreetMap is used.</p>
+        </div>
+      </section>
+      <section>
+        <button class="danger" id="btnWipe">Delete all walks and pins</button>
+        <p class="privacy">Your walks, pins and photos are saved on this device only. Nothing is uploaded.</p>
+        <p class="privacy">Map data © OpenStreetMap contributors. Isle of Wight outline from ONS, Open Government Licence v3.0.</p>
+      </section>
+    </div>
+  </div>
+</aside>
+
+<div class="dialog" id="dialog" hidden role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+  <div class="box"><h2 id="dlgTitle"></h2><div class="dlgbody" id="dlgBody"></div><div class="btns" id="dlgBtns"></div></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="drop" id="drop" hidden><div><strong>Drop to import</strong><span>GPX · KML · TCX · GeoJSON · ZIP</span></div></div>
+<input type="file" id="fileInput" multiple hidden>
+<input type="file" id="photoInput" accept="image/*" hidden>
+</body>
+</html>
